@@ -17,6 +17,49 @@
   let classCapacities = {};
   let currentGridMap = null;
   let tooltipEl = null;
+  let adjacencyCache = {};
+  let staticOptionSummaryCache = {};
+  
+  class MinHeap {
+    constructor() { this.heap = []; }
+    push(val, priority) {
+      this.heap.push({ val, priority });
+      this.bubbleUp(this.heap.length - 1);
+    }
+    pop() {
+      if (this.heap.length === 1) return this.heap.pop();
+      const top = this.heap[0];
+      this.heap[0] = this.heap.pop();
+      this.sinkDown(0);
+      return top;
+    }
+    isEmpty() { return this.heap.length === 0; }
+    bubbleUp(idx) {
+      while (idx > 0) {
+        let pIdx = Math.floor((idx - 1) / 2);
+        if (this.heap[idx].priority >= this.heap[pIdx].priority) break;
+        let tmp = this.heap[idx];
+        this.heap[idx] = this.heap[pIdx];
+        this.heap[pIdx] = tmp;
+        idx = pIdx;
+      }
+    }
+    sinkDown(idx) {
+      const len = this.heap.length;
+      while (true) {
+        let left = 2 * idx + 1;
+        let right = 2 * idx + 2;
+        let smallest = idx;
+        if (left < len && this.heap[left].priority < this.heap[smallest].priority) smallest = left;
+        if (right < len && this.heap[right].priority < this.heap[smallest].priority) smallest = right;
+        if (smallest === idx) break;
+        let tmp = this.heap[idx];
+        this.heap[idx] = this.heap[smallest];
+        this.heap[smallest] = tmp;
+        idx = smallest;
+      }
+    }
+  }
   const BOARD_ID_MAP = {
     nejakan: 81,
     jikel: 82,
@@ -28,14 +71,10 @@
     yustiel: 88
   };
   const BOARD_NAME_MAP = {
-    81: 'nejakan',
-    82: 'jikel',
-    83: 'baizel',
-    84: 'trinil',
-    85: 'ariel',
-    86: 'aspel',
-    87: 'markutan',
-    88: 'yustiel'
+    81: 'nejakan', 82: 'jikel', 83: 'baizel', 84: 'trinil',
+    85: 'ariel', 86: 'aspel', 87: 'markutan', 88: 'yustiel',
+    91: 'nejakan', 92: 'jikel', 93: 'baizel', 94: 'trinil',
+    95: 'ariel', 96: 'aspel', 97: 'markutan', 98: 'yustiel'
   };
   const BOARD_GRADE_MAP = {
     nejakan: 'common', jikel: 'common', baizel: 'common', trinil: 'common',
@@ -100,7 +139,7 @@
   async function init() {
     showOverlay();
     try {
-      const version = '1.1.7';
+      const version = '1.2.1';
       const [responseDb, responseMap] = await Promise.all([
         fetch('data/daevanion_data.json?v=' + version),
         fetch('data/node_id_skill_map.json?v=' + version)
@@ -111,19 +150,36 @@
       nodeIdSkillMap = await responseMap.json();
       Object.keys(daevanionData).forEach(classKey => {
         Object.keys(daevanionData[classKey]).forEach(boardIdStr => {
-          const nodes = daevanionData[classKey][boardIdStr] || [];
-          nodes.forEach(node => {
-            if (node.name === '최대 정신력') {
-              node.name = '정신력';
-            } else if (node.name === '최대 공격력, 최대 정신력') {
-              node.name = '최대 공격력, 정신력';
-            }
+          const rawNodes = daevanionData[classKey][boardIdStr] || [];
+          const gridMap = Array(16).fill(null).map(() => Array(16).fill(null));
+          rawNodes.forEach(n => {
+            gridMap[n.row][n.col] = n;
           });
+          
+          const fullNodes = [];
+          for (let r = 1; r <= 15; r++) {
+            for (let c = 1; c <= 15; c++) {
+              if (gridMap[r][c]) {
+                const n = gridMap[r][c];
+                if (n.name === '최대 정신력') n.name = '정신력';
+                else if (n.name === '최대 공격력, 최대 정신력') n.name = '최대 공격력, 정신력';
+                if (!n.effectList) n.effectList = [];
+                fullNodes.push(n);
+              } else {
+                fullNodes.push({
+                  row: r, col: c,
+                  type: 'None', grade: 'None', name: 'None',
+                  effectList: []
+                });
+              }
+            }
+          }
+          daevanionData[classKey][boardIdStr] = fullNodes;
         });
       });
       Object.keys(daevanionData).forEach(classKey => {
         Object.keys(BOARD_ID_MAP).forEach(boardName => {
-          const boardId = BOARD_ID_MAP[boardName];
+          const boardId = classKey === 'brawler' ? BOARD_ID_MAP[boardName] + 10 : BOARD_ID_MAP[boardName];
           const nodes = daevanionData[classKey][boardId.toString()] || [];
           nodes.forEach(node => {
             if (node.type === 'SkillLevel') {
@@ -143,7 +199,7 @@
       Object.keys(daevanionData).forEach(classKey => {
         classCapacities[classKey] = {};
         Object.keys(BOARD_ID_MAP).forEach(boardName => {
-          const boardId = BOARD_ID_MAP[boardName];
+          const boardId = classKey === 'brawler' ? BOARD_ID_MAP[boardName] + 10 : BOARD_ID_MAP[boardName];
           const nodes = daevanionData[classKey][boardId.toString()] || [];
           const cap = nodes.reduce((sum, node) => {
             if (node.type === 'None' || node.type === 'Start') return sum;
@@ -155,7 +211,7 @@
       Object.keys(daevanionData).forEach(classKey => {
         appState[classKey] = {};
         Object.keys(BOARD_ID_MAP).forEach(boardName => {
-          const boardId = BOARD_ID_MAP[boardName];
+          const boardId = classKey === 'brawler' ? BOARD_ID_MAP[boardName] + 10 : BOARD_ID_MAP[boardName];
           appState[classKey][boardId] = {};
           const nodes = daevanionData[classKey][boardId.toString()] || [];
           nodes.forEach(node => {
@@ -165,6 +221,8 @@
         });
       });
       tooltipEl = document.getElementById('node-tooltip');
+      buildAdjacencyCache();
+      buildStaticOptionSummary();
       initBoardDOM();
       setupEventListeners();
       switchBoard('nejakan');
@@ -175,6 +233,63 @@
       showToast('데바니온 데이터를 초기화하는 과정에서 에러가 발생했습니다: ' + error.message);
       hideOverlay();
     }
+  }
+  
+  function buildAdjacencyCache() {
+    adjacencyCache = {};
+    Object.keys(daevanionData).forEach(classKey => {
+      adjacencyCache[classKey] = {};
+      Object.keys(daevanionData[classKey]).forEach(boardIdStr => {
+        const nodes = daevanionData[classKey][boardIdStr] || [];
+        const gridMap = Array(16).fill(null).map(() => Array(16).fill(null));
+        nodes.forEach(node => {
+          gridMap[node.row][node.col] = node;
+        });
+        adjacencyCache[classKey][boardIdStr] = {};
+        nodes.forEach(node => {
+          if (node.type === 'None') return;
+          const key = `${node.row},${node.col}`;
+          const r = node.row;
+          const c = node.col;
+          const neighbors = [];
+          const positions = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];
+          positions.forEach(([nr, nc]) => {
+            if (nr >= 1 && nr <= 15 && nc >= 1 && nc <= 15) {
+              const neighbor = gridMap[nr][nc];
+              if (neighbor && neighbor.type !== 'None') {
+                neighbors.push(`${nr},${nc}`);
+              }
+            }
+          });
+          adjacencyCache[classKey][boardIdStr][key] = neighbors;
+        });
+      });
+    });
+  }
+
+  function buildStaticOptionSummary() {
+    staticOptionSummaryCache = {};
+    Object.keys(daevanionData).forEach(classKey => {
+      staticOptionSummaryCache[classKey] = {};
+      Object.keys(BOARD_ID_MAP).forEach(bName => {
+        const boardId = classKey === 'brawler' ? BOARD_ID_MAP[bName] + 10 : BOARD_ID_MAP[bName];
+        const nodes = daevanionData[classKey][boardId.toString()] || [];
+        const summary = {};
+        nodes.forEach(node => {
+          if (node.type === 'None' || node.type === 'Start') return;
+          const name = node.name;
+          if (!summary[name]) {
+            summary[name] = { name: name, maxGradeRank: GRADE_RANKS[node.grade] || 1, totalCount: 0 };
+          }
+          summary[name].totalCount += 1;
+          const rank = GRADE_RANKS[node.grade] || 1;
+          if (rank > summary[name].maxGradeRank) {
+            summary[name].maxGradeRank = rank;
+          }
+        });
+        staticOptionSummaryCache[classKey][bName] = summary;
+      });
+    });
   }
   function setupEventListeners() {
     document.querySelectorAll('.node-class-tab').forEach(tab => {
@@ -248,7 +363,7 @@
     return SHARED_BOARDS.includes(boardName) ? 'shared_devanion' : boardName;
   }
   function calcPointsUsedOnBoard(boardName) {
-    const boardId = BOARD_ID_MAP[boardName];
+    const boardId = currentClass === 'brawler' ? BOARD_ID_MAP[boardName] + 10 : BOARD_ID_MAP[boardName];
     const nodes = daevanionData[currentClass][boardId.toString()] || [];
     const activeState = appState[currentClass][boardId] || {};
     let total = 0;
@@ -282,7 +397,7 @@
         boards = [key];
       }
       const capacity = boards.reduce((sum, bName) => {
-        const boardId = BOARD_ID_MAP[bName];
+        const boardId = currentClass === 'brawler' ? BOARD_ID_MAP[bName] + 10 : BOARD_ID_MAP[bName];
         return sum + (classCapacities[currentClass][boardId] || 0);
       }, 0);
       limitSpan.textContent = capacity;
@@ -337,7 +452,7 @@
     if (!boardEl) return;
     let totalNonStart = 0;
     let activeNonStart = 0;
-    const boardId = BOARD_ID_MAP[currentNode];
+    const boardId = currentClass === 'brawler' ? BOARD_ID_MAP[currentNode] + 10 : BOARD_ID_MAP[currentNode];
     const nodes = daevanionData[currentClass][boardId.toString()] || [];
     const activeState = appState[currentClass][boardId] || {};
     const gridMap = Array(16).fill(null).map(() => Array(16).fill(null));
@@ -416,7 +531,7 @@
   }
   function handleNodeClick(r, c, node, gridMap) {
     const key = `${r},${c}`;
-    const boardId = BOARD_ID_MAP[currentNode];
+    const boardId = currentClass === 'brawler' ? BOARD_ID_MAP[currentNode] + 10 : BOARD_ID_MAP[currentNode];
     const activeState = appState[currentClass][boardId];
     const isActive = !!activeState[key];
     if (node.type === 'Start') return; 
@@ -436,7 +551,7 @@
     } else {
       activeState[key] = false; 
       const nodes = daevanionData[currentClass][boardId.toString()] || [];
-      const reachable = getReachableActiveNodes(nodes, activeState, gridMap);
+      const reachable = getReachableActiveNodes(nodes, activeState, boardId);
       let disconnected = false;
       nodes.forEach(n => {
         const k = `${n.row},${n.col}`;
@@ -471,7 +586,7 @@
     }
     return false;
   }
-  function getReachableActiveNodes(nodes, activeState, gridMap) {
+  function getReachableActiveNodes(nodes, activeState, boardId) {
     const queue = [];
     const visited = {};
     nodes.forEach(node => {
@@ -483,33 +598,15 @@
     });
     while (queue.length > 0) {
       const currKey = queue.shift();
-      const neighbors = getNeighbors(gridMap, currKey);
+      const neighbors = adjacencyCache[currentClass][boardId.toString()][currKey] || [];
       neighbors.forEach(nextKey => {
-        const [nr, nc] = nextKey.split(',').map(x => parseInt(x, 10));
-        const nextNode = gridMap[nr][nc];
-        if (nextNode && !visited[nextKey] && activeState[nextKey]) {
+        if (!visited[nextKey] && activeState[nextKey]) {
           visited[nextKey] = true;
           queue.push(nextKey);
         }
       });
     }
     return visited;
-  }
-  function getNeighbors(gridMap, key) {
-    const [r, c] = key.split(',').map(x => parseInt(x, 10));
-    const neighbors = [];
-    const positions = [
-      [r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]
-    ];
-    positions.forEach(([nr, nc]) => {
-      if (nr >= 1 && nr <= 15 && nc >= 1 && nc <= 15) {
-        const neighbor = gridMap[nr][nc];
-        if (neighbor && neighbor.type !== 'None') {
-          neighbors.push(`${nr},${nc}`);
-        }
-      }
-    });
-    return neighbors;
   }
   const KOREAN_BOARD_NAMES = {
     nejakan: '네자칸', jikel: '지켈', baizel: '바이젤', trinil: '트리니엘',
@@ -674,28 +771,26 @@
   function getOptionSummary(boardNames) {
     const summary = {};
     boardNames.forEach(bName => {
-      const boardId = BOARD_ID_MAP[bName];
-      const nodes = daevanionData[currentClass][boardId.toString()] || [];
-      const activeState = appState[currentClass][boardId] || {};
-      nodes.forEach(node => {
-        if (node.type === 'None' || node.type === 'Start') return;
-        const name = node.name;
-        if (!summary[name]) {
-          summary[name] = {
-            name: name,
-            maxGradeRank: GRADE_RANKS[node.grade] || 1,
+      const staticSumm = staticOptionSummaryCache[currentClass][bName] || {};
+      Object.keys(staticSumm).forEach(optName => {
+        if (!summary[optName]) {
+          summary[optName] = {
+            name: optName,
+            maxGradeRank: staticSumm[optName].maxGradeRank,
             totalCount: 0,
             pickedCount: 0
           };
         }
-        summary[name].totalCount += 1;
+        summary[optName].totalCount += staticSumm[optName].totalCount;
+      });
+      const boardId = currentClass === 'brawler' ? BOARD_ID_MAP[bName] + 10 : BOARD_ID_MAP[bName];
+      const nodes = daevanionData[currentClass][boardId.toString()] || [];
+      const activeState = appState[currentClass][boardId] || {};
+      nodes.forEach(node => {
+        if (node.type === 'None' || node.type === 'Start') return;
         const key = `${node.row},${node.col}`;
-        if (activeState[key]) {
-          summary[name].pickedCount += 1;
-        }
-        const rank = GRADE_RANKS[node.grade] || 1;
-        if (rank > summary[name].maxGradeRank) {
-          summary[name].maxGradeRank = rank;
+        if (activeState[key] && summary[node.name]) {
+          summary[node.name].pickedCount += 1;
         }
       });
     });
@@ -783,48 +878,51 @@
     if (dijkstraCache[cacheKey]) {
       return dijkstraCache[cacheKey];
     }
-    const gridMap = Array(16).fill(null).map(() => Array(16).fill(null));
+    
+    const boardId = currentClass === 'brawler' ? BOARD_ID_MAP[boardName] + 10 : BOARD_ID_MAP[boardName];
     const nodeMap = {};
     nodes.forEach(node => {
-      gridMap[node.row][node.col] = node;
       nodeMap[`${node.row},${node.col}`] = node;
     });
+    
     const dist = {};
     const prev = {};
     const visited = {};
+    const pq = new MinHeap();
+    
     Object.keys(nodeMap).forEach(key => {
       dist[key] = Infinity;
     });
+    
     nodes.forEach(node => {
       const key = `${node.row},${node.col}`;
       if (node.type === 'Start' || activeState[key]) {
         dist[key] = 0;
+        pq.push(key, 0);
       }
     });
-    while (true) {
-      let currKey = null;
-      let minDist = Infinity;
-      Object.keys(nodeMap).forEach(key => {
-        if (!visited[key] && dist[key] < minDist) {
-          currKey = key;
-          minDist = dist[key];
-        }
-      });
-      if (!currKey) break;
+    
+    while (!pq.isEmpty()) {
+      const { val: currKey, priority: currentDist } = pq.pop();
+      if (currentDist > dist[currKey]) continue;
+      
       visited[currKey] = true;
-      const neighbors = getNeighbors(gridMap, currKey);
+      const neighbors = adjacencyCache[currentClass][boardId.toString()][currKey] || [];
       neighbors.forEach(nextKey => {
         if (visited[nextKey]) return;
-        const [nr, nc] = nextKey.split(',').map(x => parseInt(x, 10));
-        const nextNode = gridMap[nr][nc];
+        const nextNode = nodeMap[nextKey];
+        if (!nextNode) return;
+        
         let stepCost = 0;
         if (nextNode.type !== 'Start' && !activeState[nextKey]) {
           stepCost = GRADE_COSTS[nextNode.grade] || 0;
         }
+        
         const alt = dist[currKey] + stepCost;
         if (alt < dist[nextKey]) {
           dist[nextKey] = alt;
           prev[nextKey] = currKey;
+          pq.push(nextKey, alt);
         }
       });
     }
@@ -877,7 +975,7 @@
   function collectCandidatesForBoards(boardNames, targetLabel, activeStateMap, remainingBudget) {
     const allCandidates = [];
     boardNames.forEach(bName => {
-      const boardId = BOARD_ID_MAP[bName];
+      const boardId = currentClass === 'brawler' ? BOARD_ID_MAP[bName] + 10 : BOARD_ID_MAP[bName];
       const nodes = daevanionData[currentClass][boardId.toString()] || [];
       const boardActiveState = activeStateMap[bName] || {};
       const cands = getCandidatesForLabel(nodes, boardActiveState, targetLabel, bName);
@@ -934,7 +1032,7 @@
       const activePriorityLabels = baseOrder.filter(lbl => !disabledMap[lbl]);
       const localActiveMap = {};
       boardNames.forEach(bName => {
-        const boardId = BOARD_ID_MAP[bName];
+        const boardId = currentClass === 'brawler' ? BOARD_ID_MAP[bName] + 10 : BOARD_ID_MAP[bName];
         const nodes = daevanionData[currentClass][boardId.toString()] || [];
         localActiveMap[bName] = {};
         nodes.forEach(node => {
@@ -959,7 +1057,7 @@
         let bestCandidate = null;
         let minCost = Infinity;
         boardNames.forEach(bName => {
-          const boardId = BOARD_ID_MAP[bName];
+          const boardId = currentClass === 'brawler' ? BOARD_ID_MAP[bName] + 10 : BOARD_ID_MAP[bName];
           const nodes = daevanionData[currentClass][boardId.toString()] || [];
           const boardActiveState = localActiveMap[bName] || {};
           const tree = buildShortestPathTree(nodes, boardActiveState, bName);
@@ -1000,7 +1098,7 @@
         remaining -= bestCandidate.cost;
       }
       boardNames.forEach(bName => {
-        const boardId = BOARD_ID_MAP[bName];
+        const boardId = currentClass === 'brawler' ? BOARD_ID_MAP[bName] + 10 : BOARD_ID_MAP[bName];
         appState[currentClass][boardId] = localActiveMap[bName];
       });
     });
@@ -1013,7 +1111,7 @@
   function resetAllBoards() {
     dijkstraCache = {};
     Object.keys(BOARD_ID_MAP).forEach(bName => {
-      const boardId = BOARD_ID_MAP[bName];
+      const boardId = currentClass === 'brawler' ? BOARD_ID_MAP[bName] + 10 : BOARD_ID_MAP[bName];
       const nodes = daevanionData[currentClass][boardId.toString()] || [];
       appState[currentClass][boardId] = {};
       nodes.forEach(node => {
@@ -1030,7 +1128,7 @@
     const statsSummary = {};
     const skillsSummary = {};
     Object.keys(BOARD_ID_MAP).forEach(bName => {
-      const boardId = BOARD_ID_MAP[bName];
+      const boardId = currentClass === 'brawler' ? BOARD_ID_MAP[bName] + 10 : BOARD_ID_MAP[bName];
       const nodes = daevanionData[currentClass][boardId.toString()] || [];
       const activeState = appState[currentClass][boardId] || {};
       nodes.forEach(node => {
