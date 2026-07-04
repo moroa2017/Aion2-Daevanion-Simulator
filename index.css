@@ -212,11 +212,11 @@ body {
   font-weight: 600;
   color: var(--text-muted);
 }
-.np-devanion { color: var(--color-legend); }
-.np-ariel { color: var(--color-common); }
-.np-aspel { color: var(--color-rare); }
-.np-markutan { color: var(--color-unique); }
-.np-yustiel { color: var(--accent-purple); }
+.np-devanion { color: #ffffff; text-shadow: 0 0 6px rgba(255, 255, 255, 0.25); }
+.np-ariel { color: #ff9800; text-shadow: 0 0 6px rgba(255, 152, 0, 0.25); }
+.np-aspel { color: #af52de; text-shadow: 0 0 6px rgba(175, 82, 222, 0.25); }
+.np-markutan { color: #00e676; text-shadow: 0 0 6px rgba(0, 230, 118, 0.25); }
+.np-yustiel { color: #ff3333; text-shadow: 0 0 6px rgba(255, 51, 51, 0.25); }
 .node-point-row {
   display: flex;
   align-items: center;
@@ -227,15 +227,65 @@ body {
   height: 36px;
   transition: border-color 0.2s ease;
 }
-.node-point-row:focus-within {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 10px var(--accent-blue-glow);
+/* 보유 포인트 입력란 고유 색상 및 포커스 스타일 */
+.node-pt-devanion .node-point-row {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.node-pt-devanion .node-point-input {
+  color: #ffffff;
+}
+.node-pt-devanion .node-point-row:focus-within {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.15);
+}
+
+.node-pt-ariel .node-point-row {
+  border-color: rgba(255, 152, 0, 0.2);
+}
+.node-pt-ariel .node-point-input {
+  color: #ff9800;
+}
+.node-pt-ariel .node-point-row:focus-within {
+  border-color: #ff9800;
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.25);
+}
+
+.node-pt-aspel .node-point-row {
+  border-color: rgba(175, 82, 222, 0.2);
+}
+.node-pt-aspel .node-point-input {
+  color: #af52de;
+}
+.node-pt-aspel .node-point-row:focus-within {
+  border-color: #af52de;
+  box-shadow: 0 0 10px rgba(175, 82, 222, 0.25);
+}
+
+.node-pt-markutan .node-point-row {
+  border-color: rgba(0, 230, 118, 0.2);
+}
+.node-pt-markutan .node-point-input {
+  color: #00e676;
+}
+.node-pt-markutan .node-point-row:focus-within {
+  border-color: #00e676;
+  box-shadow: 0 0 10px rgba(0, 230, 118, 0.25);
+}
+
+.node-pt-yustiel .node-point-row {
+  border-color: rgba(255, 51, 51, 0.2);
+}
+.node-pt-yustiel .node-point-input {
+  color: #ff3333;
+}
+.node-pt-yustiel .node-point-row:focus-within {
+  border-color: #ff3333;
+  box-shadow: 0 0 10px rgba(255, 51, 51, 0.25);
 }
 .node-point-input {
   width: 48px;
   background: transparent;
   border: none;
-  color: #fff;
   font-size: 0.9rem;
   font-weight: 700;
   text-align: center;

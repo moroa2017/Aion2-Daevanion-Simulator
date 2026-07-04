@@ -172,7 +172,7 @@
       hideOverlay();
     } catch (error) {
       console.error(error);
-      alert('데바니온 데이터를 초기화하는 과정에서 에러가 발생했습니다: ' + error.message);
+      showToast('데바니온 데이터를 초기화하는 과정에서 에러가 발생했습니다: ' + error.message);
       hideOverlay();
     }
   }
