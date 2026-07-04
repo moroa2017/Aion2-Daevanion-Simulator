@@ -43,9 +43,6 @@ python -m http.server 8000
 ```
 웹 브라우저를 열고 `http://localhost:8000` 주소로 접속하면 즉시 실행됩니다.
 
----
 
-## 📄 라이선스 (License)
 
-© 2026 Moroa All Rights Reserved.  
-본 프로젝트의 저작권은 Moroa에게 있습니다.
+
