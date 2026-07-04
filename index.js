@@ -328,6 +328,20 @@
     });
     document.getElementById('node-calc-btn-main').addEventListener('click', runOptimization);
     document.getElementById('node-reset-btn-main').addEventListener('click', resetAllBoards);
+    const resetOptionBtn = document.getElementById('btn-reset-option-priority');
+    if (resetOptionBtn) {
+      resetOptionBtn.addEventListener('click', () => {
+        const groupKey = getBudgetKey(currentNode);
+        if (optionOrderMap[currentClass]) {
+          delete optionOrderMap[currentClass][groupKey];
+        }
+        if (optionDisabledMap[currentClass]) {
+          delete optionDisabledMap[currentClass][groupKey];
+        }
+        renderOptionList();
+        showToast('우선순위 설정이 초기화되었습니다.');
+      });
+    }
   }
   function switchClass(classKey) {
     dijkstraCache = {};
@@ -694,6 +708,7 @@
       });
     const hasInvalidSkill = savedOrder.some(name => name.includes('스킬 레벨') && !skillsInThisBoard.includes(name));
     const hasMissingSkill = skillsInThisBoard.some(name => !savedOrder.includes(name));
+
     let baseOrder = [];
     if (savedOrder.length && !hasInvalidSkill && !hasMissingSkill) {
       baseOrder = savedOrder;
@@ -713,6 +728,14 @@
     }
     const uniqueOptions = Object.values(optionSummaryMap);
     uniqueOptions.sort((a, b) => {
+      const idxA = baseOrder.indexOf(a.name);
+      const idxB = baseOrder.indexOf(b.name);
+      if (idxA !== -1 && idxB !== -1) {
+        return idxA - idxB;
+      }
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+
       const getSortWeight = (name) => {
         if (name === '정신력') return 999; 
         if (name === '최대 생명력' || name === '치명타 저항') return 990; 
@@ -723,13 +746,6 @@
       if (weightA !== weightB) {
         return weightA - weightB;
       }
-      const idxA = baseOrder.indexOf(a.name);
-      const idxB = baseOrder.indexOf(b.name);
-      if (idxA !== -1 && idxB !== -1) {
-        return idxA - idxB;
-      }
-      if (idxA !== -1) return -1;
-      if (idxB !== -1) return 1;
       const isSkillA = a.name.includes('스킬 레벨');
       const isSkillB = b.name.includes('스킬 레벨');
       if (isSkillA !== isSkillB) {
@@ -758,8 +774,8 @@
             <span class="node-option-count">${item.pickedCount}/${item.totalCount}</span>
           </div>
           <div class="node-option-move">
-            <button class="node-option-move-btn btn-up" title="우선순위 올리기">▲</button>
-            <button class="node-option-move-btn btn-down" title="우선순위 내리기">▼</button>
+            <button class="node-option-move-btn btn-up" title="최상단으로 이동">▲</button>
+            <button class="node-option-move-btn btn-down" title="최하단으로 이동">▼</button>
             <button class="node-option-move-btn node-option-remove-btn" title="활성화 제외">✕</button>
           </div>
         </div>
@@ -845,17 +861,15 @@
       const name = item.dataset.name;
       item.querySelector('.btn-up').addEventListener('click', (e) => {
         e.stopPropagation();
-        const prev = item.previousElementSibling;
-        if (prev) {
-          container.insertBefore(item, prev);
+        if (item !== container.firstElementChild) {
+          container.insertBefore(item, container.firstElementChild);
           saveOptionOrder(container, groupKey);
         }
       });
       item.querySelector('.btn-down').addEventListener('click', (e) => {
         e.stopPropagation();
-        const next = item.nextElementSibling;
-        if (next) {
-          container.insertBefore(next, item);
+        if (item !== container.lastElementChild) {
+          container.appendChild(item);
           saveOptionOrder(container, groupKey);
         }
       });
@@ -1009,13 +1023,14 @@
       const savedOrder = optionOrderMap[currentClass][groupKey] || [];
       const optionSummaryMap = getOptionSummary(boardNames);
       const skillsInThisBoard = Object.keys(optionSummaryMap).filter(name => name.includes('스킬 레벨'));
-      const hasInvalidSkill = savedOrder.some(name => name.includes('스킬 레벨') && !skillsInThisBoard.includes(name));
-      const hasMissingSkill = skillsInThisBoard.some(name => !savedOrder.includes(name));
-      let baseOrder = [];
-      if (savedOrder.length && !hasInvalidSkill && !hasMissingSkill) {
-        baseOrder = savedOrder;
-      } else {
-        const defaultList = DEFAULT_PRIORITY_ORDER[groupKey] || [];
+    const hasInvalidSkill = savedOrder.some(name => name.includes('스킬 레벨') && !skillsInThisBoard.includes(name));
+    const hasMissingSkill = skillsInThisBoard.some(name => !savedOrder.includes(name));
+
+    let baseOrder = [];
+    if (savedOrder.length && !hasInvalidSkill && !hasMissingSkill) {
+      baseOrder = savedOrder;
+    } else {
+      const defaultList = DEFAULT_PRIORITY_ORDER[groupKey] || [];
         const evadeIdx = defaultList.indexOf('회피');
         if (evadeIdx !== -1) {
           baseOrder = [

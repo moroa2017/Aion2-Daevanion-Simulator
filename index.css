@@ -619,6 +619,24 @@ body {
   font-weight: 600;
   margin-bottom: 4px;
   color: var(--text-main);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.node-option-reset-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--glass-border);
+  color: var(--text-dark);
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.node-option-reset-btn:hover {
+  background: #ff4444;
+  color: #fff;
+  border-color: #ff4444;
 }
 .node-option-hint {
   font-size: 0.75rem;
