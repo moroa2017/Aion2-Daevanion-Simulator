@@ -227,7 +227,7 @@ body {
   height: 36px;
   transition: border-color 0.2s ease;
 }
-/* 보유 포인트 입력란 고유 색상 및 포커스 스타일 */
+
 .node-pt-devanion .node-point-row {
   border-color: rgba(255, 255, 255, 0.15);
 }
@@ -936,4 +936,126 @@ body {
   color: var(--text-dark);
   font-weight: 400;
   letter-spacing: 0.5px;
+}
+
+@media (max-width: 768px) {
+  body {
+    padding: 20px 10px;
+  }
+  .wrap {
+    gap: 16px;
+  }
+  .optimizer-header h1 {
+    font-size: 1.6rem;
+    text-align: center;
+  }
+  .seo-intro {
+    text-align: center;
+    font-size: 0.88rem;
+  }
+  
+  .node-class-tabs-wrap {
+    margin: 0 -10px 12px -10px;
+    padding: 0 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .node-class-tabs {
+    flex-wrap: nowrap;
+    width: max-content;
+    padding-bottom: 6px;
+  }
+  .node-class-tab {
+    padding: 8px 14px;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+
+  .node-board-box {
+    padding: 16px;
+    gap: 16px;
+    border-radius: 14px;
+  }
+
+  .node-point-input-bar {
+    padding: 12px 16px;
+    gap: 12px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .node-point-input-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .node-point-input-label {
+    text-align: center;
+  }
+  .node-point-input-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .node-point-item {
+    min-width: 0;
+  }
+  .node-point-action-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+  .node-calc-btn, .node-reset-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 12px;
+    font-size: 0.88rem;
+  }
+
+  #node-board-mini-tabs {
+    margin: 0 -16px;
+    padding: 0 16px 6px 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .node-mini-tab {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    padding: 6px 12px;
+  }
+
+  .node-board-box-board {
+    padding: 8px;
+    border-radius: 10px;
+  }
+  .node-board {
+    gap: 2px;
+    padding: 6px;
+  }
+
+  .node-summary-panel {
+    padding: 16px;
+  }
+  .node-summary-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+  
+  .node-option-panel {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .node-point-input-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .node-summary-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .node-board-outer {
+    max-width: 100%;
+  }
 }
